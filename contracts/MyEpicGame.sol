@@ -33,6 +33,16 @@ contract MyEpicGame is ERC721 {
     // We create a mapping from the nft's tokenId => that NFTs attributes.
     mapping(uint256 => CharacterAttributes) public nftHolderAttributes;
 
+    struct BigBoss {
+        string name;
+        string imageURI;
+        uint256 hp;
+        uint256 maxHp;
+        uint256 attackDamage;
+    }
+
+    BigBoss public bigBoss;
+
     // A mapping from an address => the NFTs tokenId. Gives me an ez way
     // to store the owner of the NFT and reference it later.
     mapping(address => uint256) public nftHolders;
@@ -41,13 +51,33 @@ contract MyEpicGame is ERC721 {
         string[] memory characterNames,
         string[] memory characterImageURIs,
         uint256[] memory characterHp,
-        uint256[] memory characterAttackDmg
+        uint256[] memory characterAttackDmg,
+        string memory bossName, // These new variables would be passed in via run.js or deploy.js.
+        string memory bossImageURI,
+        uint256 bossHp,
+        uint256 bossAttackDamage
     )
         // Below, you can also see I added some special identifier symbols for our NFT.
         // This is the name and symbol for our token, ex Ethereum and ETH. I just call mine
         // Heroes and HERO. Remember, an NFT is just a token!
         ERC721("Heroes", "HERO")
     {
+        // Initialize the boss. Save it to our global "bigBoss" state variable.
+        bigBoss = BigBoss({
+            name: bossName,
+            imageURI: bossImageURI,
+            hp: bossHp,
+            maxHp: bossHp,
+            attackDamage: bossAttackDamage
+        });
+
+        console.log(
+            "Done initializing boss %s w/ HP %s, img %s",
+            bigBoss.name,
+            bigBoss.hp,
+            bigBoss.imageURI
+        );
+
         for (uint256 i = 0; i < characterNames.length; i += 1) {
             defaultCharacters.push(
                 CharacterAttributes({
@@ -74,6 +104,36 @@ contract MyEpicGame is ERC721 {
         // I increment _tokenIds here so that my first NFT has an ID of 1.
         // More on this in the lesson!
         _tokenIds.increment();
+    }
+
+    function attackBoss() public {
+        // Get the state of the player's NFT.
+        uint256 nftTokenIdOfPlayer = nftHolders[msg.sender];
+        CharacterAttributes storage player = nftHolderAttributes[
+            nftTokenIdOfPlayer
+        ];
+
+        console.log(
+            "\nPlayer w/ character %s about to attack. Has %s HP and %s AD",
+            player.name,
+            player.hp,
+            player.attackDamage
+        );
+        console.log(
+            "Boss %s has %s HP and %s AD",
+            bigBoss.name,
+            bigBoss.hp,
+            bigBoss.attackDamage
+        );
+
+        // Make sure the player has more than 0 HP.
+        require(player.hp > 0, "Error: character must have HP to attack boss.");
+
+        // Make sure the boss has more than 0 HP.
+        require(
+            bigBoss.hp > 0,
+            "Error: boss must have HP to attack character."
+        );
     }
 
     // Users would be able to hit this function and get their NFT based on the
