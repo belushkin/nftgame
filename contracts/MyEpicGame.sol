@@ -23,6 +23,8 @@ contract MyEpicGame is ERC721 {
         uint256 attackDamage;
     }
 
+    uint256 randNonce = 0; // this is used to help ensure that the algorithm has different inputs every time
+
     // The tokenId is the NFTs unique identifier, it's just a number that goes
     // 0, 1, 2, 3, etc.
     using Counters for Counters.Counter;
@@ -46,6 +48,17 @@ contract MyEpicGame is ERC721 {
     // A mapping from an address => the NFTs tokenId. Gives me an ez way
     // to store the owner of the NFT and reference it later.
     mapping(address => uint256) public nftHolders;
+
+    event CharacterNFTMinted(
+        address sender,
+        uint256 tokenId,
+        uint256 characterIndex
+    );
+    event AttackComplete(
+        address sender,
+        uint256 newBossHp,
+        uint256 newPlayerHp
+    );
 
     constructor(
         string[] memory characterNames,
@@ -106,6 +119,20 @@ contract MyEpicGame is ERC721 {
         _tokenIds.increment();
     }
 
+    function randomInt(uint256 _modulus) internal returns (uint256) {
+        randNonce++; // increase nonce
+        return
+            uint256(
+                keccak256(
+                    abi.encodePacked(
+                        block.timestamp, // an alias for 'block.timestamp'
+                        msg.sender, // your address
+                        randNonce
+                    )
+                )
+            ) % _modulus; // modulo using the _modulus argument
+    }
+
     function attackBoss() public {
         // Get the state of the player's NFT.
         uint256 nftTokenIdOfPlayer = nftHolders[msg.sender];
@@ -134,6 +161,68 @@ contract MyEpicGame is ERC721 {
             bigBoss.hp > 0,
             "Error: boss must have HP to attack character."
         );
+
+        // Allow player to attack boss.
+        console.log("%s swings at %s...", player.name, bigBoss.name);
+        if (bigBoss.hp < player.attackDamage) {
+            bigBoss.hp = 0;
+            console.log("The boss is dead!");
+        } else {
+            if (randomInt(10) > 5) {
+                // by passing 10 as the mod, we elect to only grab the last digit (0-9) of the hash!
+                bigBoss.hp = bigBoss.hp - player.attackDamage;
+                console.log(
+                    "%s attacked boss. New boss hp: %s",
+                    player.name,
+                    bigBoss.hp
+                );
+            } else {
+                console.log("%s missed!\n", player.name);
+            }
+        }
+
+        // Allow boss to attack player.
+        if (player.hp < bigBoss.attackDamage) {
+            player.hp = 0;
+        } else {
+            player.hp = player.hp - bigBoss.attackDamage;
+        }
+
+        // Console for ease.
+        console.log("Player attacked boss. New boss hp: %s", bigBoss.hp);
+        console.log("Boss attacked player. New player hp: %s\n", player.hp);
+
+        emit AttackComplete(msg.sender, bigBoss.hp, player.hp);
+    }
+
+    function getAllDefaultCharacters()
+        public
+        view
+        returns (CharacterAttributes[] memory)
+    {
+        return defaultCharacters;
+    }
+
+    function getBigBoss() public view returns (BigBoss memory) {
+        return bigBoss;
+    }
+
+    function checkIfUserHasNFT()
+        public
+        view
+        returns (CharacterAttributes memory)
+    {
+        // Get the tokenId of the user's character NFT
+        uint256 userNftTokenId = nftHolders[msg.sender];
+        // If the user has a tokenId in the map, return their character.
+        if (userNftTokenId > 0) {
+            return nftHolderAttributes[userNftTokenId];
+        }
+        // Else, return an empty character.
+        else {
+            CharacterAttributes memory emptyStruct;
+            return emptyStruct;
+        }
     }
 
     // Users would be able to hit this function and get their NFT based on the
@@ -167,6 +256,8 @@ contract MyEpicGame is ERC721 {
 
         // Increment the tokenId for the next person that uses it.
         _tokenIds.increment();
+
+        emit CharacterNFTMinted(msg.sender, newItemId, _characterIndex);
     }
 
     function tokenURI(uint256 _tokenId)

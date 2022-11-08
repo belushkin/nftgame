@@ -17,3 +17,9 @@ cd nftgame
 npm install
 
 npx hardhat run scripts/deploy.js --network goerli
+
+https://goerlifaucet.com/
+
+
+0x894b9Ed417A3Ab6DDB1C99B23BaFBD289c397418
+
