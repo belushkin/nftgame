@@ -13,7 +13,9 @@ npx hardhat run scripts/deploy.js
 ```
 
 git clone git@github.com:belushkin/nftgame.git
+
 cd nftgame
+
 npm install
 
 npx hardhat run scripts/deploy.js --network goerli
